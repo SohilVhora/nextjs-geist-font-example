@@ -1,0 +1,46 @@
+name: Build and Test Socially Application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker Image
+      run: |
+        cd socially
+        docker build -t socially-app:latest .
+        
+    - name: Test Docker Image
+      run: |
+        # Start the container in detached mode
+        docker run -d --name socially-test -p 8000:8000 socially-app:latest
+        
+        # Wait for the application to start
+        sleep 30
+        
+        # Test health endpoint
+        curl -f http://localhost:8000/health || exit 1
+        
+        # Clean up
+        docker stop socially-test
+        docker rm socially-test
+        
+    - name: List Docker Images
+      run: docker images
+      
+    - name: Docker Image Size
+      run: |
+        echo "Docker image size:"
+        docker images socially-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
